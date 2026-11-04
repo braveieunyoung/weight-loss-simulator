@@ -10,29 +10,22 @@ st.set_page_config(
     layout="centered"
 )
 
-# 앱이 실행될 때 모델을 직접 학습시키는 함수
+# 앱이 실행될 때 CSV를 읽어와 모델을 직접 학습시키는 함수
 @st.cache_resource
 def train_and_load_models():
-    # CSV 파일 읽기
+    # 1. 원본 CSV 파일 읽기
     df = pd.read_csv('신체검사.csv')
     
-    # 디버깅용: 현재 CSV 파일의 컬럼명을 화면에 출력
-    st.write("🔍 읽어온 CSV 파일 컬럼 목록:", list(df.columns))
-    
-    # 컬럼명 공백 제거 및 소문자 통일
+    # 2. 컬럼명 공백 제거 및 소문자 통일
     df.columns = df.columns.str.strip().str.lower()
     
-    # 필수 컬럼 확인 및 대체
-    # 예: 만약 'weight' 대신 다른 이름이 있다면 자동 매칭
-    if 'weight' not in df.columns:
-        # 마지막 컬럼을 weight로 간주하거나 에러 방지
-        pass
-
-    # 숫자형 데이터 변환
-    for col in df.columns:
-        if col != 'obesity': # 비만 단계 등 텍스트 컬럼 제외
+    # 3. 숫자형 데이터 변환
+    numeric_cols = ['height', 'chest', 'waist', 'weight', 'sleeve', 'crotch', 'head', 'foot']
+    for col in numeric_cols:
+        if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce')
             
+    # 결측치 제거
     df = df.dropna(subset=['height', 'chest', 'waist', 'weight'])
     
     # 비만 단계 컬럼 탐색
@@ -47,13 +40,13 @@ def train_and_load_models():
 
     df[obesity_col] = df[obesity_col].astype(str)
     
-    # 1. 선형 회귀 모델 학습 (키, 가슴, 허리로 몸무게 예측)
+    # 4. 선형 회귀 모델 학습 (키, 가슴, 허리로 몸무게 예측)
     X_lr = df[['height', 'chest', 'waist']]
     y_lr = df['weight']
     lr_model = LinearRegression()
     lr_model.fit(X_lr, y_lr)
     
-    # 2. 랜덤 포레스트 분류 모델 학습
+    # 5. 랜덤 포레스트 분류 모델 학습 (비만 단계 예측)
     X_rf = df[['height', 'chest', 'waist', 'weight']]
     y_rf = df[obesity_col]
     rf_clf = RandomForestClassifier(n_estimators=100, random_state=42)
@@ -61,6 +54,7 @@ def train_and_load_models():
     
     return lr_model, rf_clf
 
+# 모델 생성 실행
 lr_model, rf_clf = train_and_load_models()
 
 # UI 타이틀
@@ -83,6 +77,7 @@ with col2:
 
 st.markdown("")
 if st.button("🚀 감량 시나리오 분석 및 투자 설계", use_container_width=True):
+    # 예측 및 시나리오 계산
     input_df = pd.DataFrame([[height, chest, waist]], columns=['height', 'chest', 'waist'])
     predicted_weight = float(lr_model.predict(input_df)[0])
 
