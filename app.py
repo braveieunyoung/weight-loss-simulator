@@ -18,25 +18,25 @@ def train_and_load_models():
     # 컬럼명 공백 제거 및 소문자 통일
     df.columns = df.columns.str.strip().str.lower()
     
-    # 비만 단계를 나타내는 컬럼 후보군 탐색
+    # 비만 단계를 나타내는 컬럼 탐색 (마지막 컬럼 또는 지정된 이름)
     obesity_col = None
     for col in ['obesity', 'label', 'class', 'status', '비만']:
         if col in df.columns:
             obesity_col = col
             break
             
-    # 후보에 없으면 마지막 컬럼 선택
     if obesity_col is None:
         obesity_col = df.columns[-1]
 
-    # 숫자형 데이터 변환 (특징값)
-    for col in ['height', 'chest', 'waist', 'weight']:
+    # 모든 주요 수치형 컬럼 숫자 변환
+    numeric_cols = ['height', 'chest', 'waist', 'weight', 'sleeve', 'crotch', 'head', 'foot']
+    for col in numeric_cols:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce')
             
-    df = df.dropna()
+    df = df.dropna(subset=['height', 'chest', 'waist', 'weight'])
     
-    # 💡 [핵심 수정] 정답 데이터(비만 단계)를 확실하게 문자열(범주형 클래스)로 변환
+    # 정답 데이터(비만 단계) 문자열 변환
     df[obesity_col] = df[obesity_col].astype(str)
     
     # 1. 선형 회귀 모델 학습 (키, 가슴, 허리로 몸무게 예측)
