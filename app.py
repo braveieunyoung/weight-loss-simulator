@@ -13,12 +13,29 @@ st.set_page_config(
 # 앱이 실행될 때 모델을 직접 학습시키는 함수
 @st.cache_resource
 def train_and_load_models():
+    # CSV 파일 읽기
     df = pd.read_csv('신체검사.csv')
+    
+    # 디버깅용: 현재 CSV 파일의 컬럼명을 화면에 출력
+    st.write("🔍 읽어온 CSV 파일 컬럼 목록:", list(df.columns))
     
     # 컬럼명 공백 제거 및 소문자 통일
     df.columns = df.columns.str.strip().str.lower()
     
-    # 비만 단계를 나타내는 컬럼 탐색 (마지막 컬럼 또는 지정된 이름)
+    # 필수 컬럼 확인 및 대체
+    # 예: 만약 'weight' 대신 다른 이름이 있다면 자동 매칭
+    if 'weight' not in df.columns:
+        # 마지막 컬럼을 weight로 간주하거나 에러 방지
+        pass
+
+    # 숫자형 데이터 변환
+    for col in df.columns:
+        if col != 'obesity': # 비만 단계 등 텍스트 컬럼 제외
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+            
+    df = df.dropna(subset=['height', 'chest', 'waist', 'weight'])
+    
+    # 비만 단계 컬럼 탐색
     obesity_col = None
     for col in ['obesity', 'label', 'class', 'status', '비만']:
         if col in df.columns:
@@ -28,15 +45,6 @@ def train_and_load_models():
     if obesity_col is None:
         obesity_col = df.columns[-1]
 
-    # 모든 주요 수치형 컬럼 숫자 변환
-    numeric_cols = ['height', 'chest', 'waist', 'weight', 'sleeve', 'crotch', 'head', 'foot']
-    for col in numeric_cols:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors='coerce')
-            
-    df = df.dropna(subset=['height', 'chest', 'waist', 'weight'])
-    
-    # 정답 데이터(비만 단계) 문자열 변환
     df[obesity_col] = df[obesity_col].astype(str)
     
     # 1. 선형 회귀 모델 학습 (키, 가슴, 허리로 몸무게 예측)
@@ -88,7 +96,7 @@ if st.button("🚀 감량 시나리오 분석 및 투자 설계", use_container_
     
     m1, m2, m3 = st.columns(3)
     m1.metric("현재 예측 몸무게", f"{predicted_weight:.1f} kg")
-    m2.metric("목표 몸무게", f"{target_weight:.1f} kg")
+    m2.metric("목표 체중", f"{target_weight:.1f} kg")
     m3.metric("현재 비만 단계", pred_obesity_rf, delta_color="inverse")
 
     if weight_to_lose <= 0:
