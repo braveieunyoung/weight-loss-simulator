@@ -10,19 +10,30 @@ st.set_page_config(
     layout="centered"
 )
 
-# 앱이 실행될 때 모델을 직접 학습시키는 함수
+# 앱이 실행될 때 모델을 직접 학습시키는 함수 (안전장치 추가)
 @st.cache_resource
 def train_and_load_models():
-    # 💡 깃허브에 함께 올릴 CSV 파일명으로 지정해주세요 (예: 신체검사.csv)
     df = pd.read_csv('신체검사.csv')
     
-    # 1. 선형 회귀 모델 학습 (키, 가슴, 허리로 몸무게 예측)
+    # 1. 컬럼명을 소문자로 통일하고 공백 제거 (오타 방지)
+    df.columns = df.columns.str.strip().str.lower()
+    
+    # 2. 필요한 컬럼만 추출 후 숫자로 강제 변환 (문자열이나 빈값 에러 방지)
+    target_cols = ['height', 'chest', 'waist', 'weight', 'obesity']
+    for col in ['height', 'chest', 'waist', 'weight']:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+            
+    # 결측치(NaN)가 있는 행 제거
+    df = df.dropna()
+    
+    # 3. 선형 회귀 모델 학습 (키, 가슴, 허리로 몸무게 예측)
     X_lr = df[['height', 'chest', 'waist']]
     y_lr = df['weight']
     lr_model = LinearRegression()
     lr_model.fit(X_lr, y_lr)
     
-    # 2. 랜덤 포레스트 모델 학습 (키, 가슴, 허리, 몸무게로 비만 단계 예측)
+    # 4. 랜덤 포레스트 모델 학습 (키, 가슴, 허리, 몸무게로 비만 단계 예측)
     X_rf = df[['height', 'chest', 'waist', 'weight']]
     y_rf = df['obesity']  # 데이터의 비만 단계 컬럼명
     rf_clf = RandomForestClassifier(n_estimators=100, random_state=42)
