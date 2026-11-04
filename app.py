@@ -18,23 +18,26 @@ def train_and_load_models():
     # 컬럼명 공백 제거 및 소문자 통일
     df.columns = df.columns.str.strip().str.lower()
     
-    # 비만 단계를 나타내는 컬럼 후보군 (데이터에 따라 'obesity', 'label', 'class', '비만' 등으로 되어있을 수 있음)
+    # 비만 단계를 나타내는 컬럼 후보군 탐색
     obesity_col = None
-    for col in ['obesity', 'label', 'class', 'status']:
+    for col in ['obesity', 'label', 'class', 'status', '비만']:
         if col in df.columns:
             obesity_col = col
             break
             
-    # 만약 영어 이름이 없다면 컬럼 중 가장 마지막 컬럼을 비만 단계로 자동 지정
+    # 후보에 없으면 마지막 컬럼 선택
     if obesity_col is None:
         obesity_col = df.columns[-1]
 
-    # 숫자형 데이터 변환
+    # 숫자형 데이터 변환 (특징값)
     for col in ['height', 'chest', 'waist', 'weight']:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce')
             
     df = df.dropna()
+    
+    # 💡 [핵심 수정] 정답 데이터(비만 단계)를 확실하게 문자열(범주형 클래스)로 변환
+    df[obesity_col] = df[obesity_col].astype(str)
     
     # 1. 선형 회귀 모델 학습 (키, 가슴, 허리로 몸무게 예측)
     X_lr = df[['height', 'chest', 'waist']]
@@ -42,7 +45,7 @@ def train_and_load_models():
     lr_model = LinearRegression()
     lr_model.fit(X_lr, y_lr)
     
-    # 2. 랜덤 포레스트 모델 학습
+    # 2. 랜덤 포레스트 분류 모델 학습
     X_rf = df[['height', 'chest', 'waist', 'weight']]
     y_rf = df[obesity_col]
     rf_clf = RandomForestClassifier(n_estimators=100, random_state=42)
