@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
-import joblib
+from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestClassifier
 
 # 페이지 설정
 st.set_page_config(
@@ -9,14 +10,27 @@ st.set_page_config(
     layout="centered"
 )
 
-# 모델 로드 (캐싱을 이용해 한 번만 로드)
+# 앱이 실행될 때 모델을 직접 학습시키는 함수
 @st.cache_resource
-def load_models():
-    lr = joblib.load('lr_model.pkl')
-    rf = joblib.load('rf_clf.pkl')
-    return lr, rf
+def train_and_load_models():
+    # 💡 깃허브에 함께 올릴 CSV 파일명으로 지정해주세요 (예: 신체검사.csv)
+    df = pd.read_csv('신체검사.csv')
+    
+    # 1. 선형 회귀 모델 학습 (키, 가슴, 허리로 몸무게 예측)
+    X_lr = df[['height', 'chest', 'waist']]
+    y_lr = df['weight']
+    lr_model = LinearRegression()
+    lr_model.fit(X_lr, y_lr)
+    
+    # 2. 랜덤 포레스트 모델 학습 (키, 가슴, 허리, 몸무게로 비만 단계 예측)
+    X_rf = df[['height', 'chest', 'waist', 'weight']]
+    y_rf = df['obesity']  # 데이터의 비만 단계 컬럼명
+    rf_clf = RandomForestClassifier(n_estimators=100, random_state=42)
+    rf_clf.fit(X_rf, y_rf)
+    
+    return lr_model, rf_clf
 
-lr_model, rf_clf = load_models()
+lr_model, rf_clf = train_and_load_models()
 
 # UI 타이틀
 st.title("📈 내 몸무게 가치 상승 (체중 감량 모의 투자) 프로젝트")
@@ -24,7 +38,7 @@ st.markdown("신체 데이터를 입력하고 **감량 포트폴리오(시나리
 
 st.divider()
 
-# 사이드바 또는 메인 입력 폼
+# 신체 스펙 입력
 st.subheader("🛠️ 현재 신체 자산(스펙) 입력")
 col1, col2 = st.columns(2)
 
@@ -38,15 +52,13 @@ with col2:
 
 st.markdown("")
 if st.button("🚀 감량 시나리오 분석 및 투자 설계", use_container_width=True):
-    # 1. 선형 회귀 기반 현재 몸무게 예측
+    # 예측 및 시나리오 계산 로직
     input_df = pd.DataFrame([[height, chest, waist]], columns=['height', 'chest', 'waist'])
     predicted_weight = float(lr_model.predict(input_df)[0])
 
-    # 2. 현재 상태 비만 단계 예측
     input_current = pd.DataFrame([[height, chest, waist, predicted_weight]], columns=['height', 'chest', 'waist', 'weight'])
     pred_obesity_rf = str(rf_clf.predict(input_current)[0])
 
-    # 3. 감량 목표 계산
     weight_to_lose = predicted_weight - target_weight
 
     st.divider()
@@ -60,19 +72,16 @@ if st.button("🚀 감량 시나리오 분석 및 투자 설계", use_container_
     if weight_to_lose <= 0:
         st.success("🎉 축하합니다! 이미 목표 체중 이하이거나 추가 감량이 필요 없는 상태입니다.")
     else:
-        st.info(f"🎯 **총 감량 목표 (청산해야 할 초과 체중):** -{weight_to_lose:.1f} kg")
+        st.info(f"🎯 **총 감량 목표:** -{weight_to_lose:.1f} kg")
 
-        # 선형 회귀 계수 추출
         coef_chest = lr_model.coef_[1]
         coef_waist = lr_model.coef_[2]
 
-        # 시나리오 1: 허리 집중 감량
         waist_reduction_only = weight_to_lose / coef_waist
         target_waist_only = waist - waist_reduction_only
         input_target_1 = pd.DataFrame([[height, chest, target_waist_only, target_weight]], columns=['height', 'chest', 'waist', 'weight'])
         pred_obesity_target_1 = str(rf_clf.predict(input_target_1)[0])
 
-        # 시나리오 2: 허리 70% + 가슴 30% 균형 감량
         target_weight_loss_waist = weight_to_lose * 0.7
         target_weight_loss_chest = weight_to_lose * 0.3
         waist_reduction_balanced = target_weight_loss_waist / coef_waist
@@ -82,7 +91,6 @@ if st.button("🚀 감량 시나리오 분석 및 투자 설계", use_container_
         input_target_2 = pd.DataFrame([[height, target_chest_balanced, target_waist_balanced, target_weight]], columns=['height', 'chest', 'waist', 'weight'])
         pred_obesity_target_2 = str(rf_clf.predict(input_target_2)[0])
 
-        # 화면에 시나리오 카드 출력
         st.markdown("---")
         st.subheader("💡 감량 포트폴리오 (시나리오) 추천")
 
@@ -99,4 +107,4 @@ if st.button("🚀 감량 시나리오 분석 및 투자 설계", use_container_
             st.write(f"- **허리둘레 목표:** {waist}cm ➔ **{target_waist_balanced:.1f}cm** (약 **{waist_reduction_balanced:.1f}cm** 감량)")
             st.write(f"- **가슴둘레 목표:** {chest}cm ➔ **{target_chest_balanced:.1f}cm** (약 **{chest_reduction_balanced:.1f}cm** 감량)")
             st.write(f"- **비만 단계 변화:** {pred_obesity_rf} ➔ **{pred_obesity_target_2}**")
-            st.success("💪 **추천 트레이닝 루틴:** 전신 유산소 + 상체 근력 운동(푸시업, 덤벨 숄더프레스, 렛풀다운)으로 근선명도 유지")
+            st.success("💪 **추천 트레이닝 루틴:** 전신 유산소 + 상체 근력 운동(푸시업, 덤벨 숄더프레스, 렛풀다운)")
