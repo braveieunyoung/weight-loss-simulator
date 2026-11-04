@@ -10,32 +10,41 @@ st.set_page_config(
     layout="centered"
 )
 
-# 앱이 실행될 때 모델을 직접 학습시키는 함수 (안전장치 추가)
+# 앱이 실행될 때 모델을 직접 학습시키는 함수
 @st.cache_resource
 def train_and_load_models():
     df = pd.read_csv('신체검사.csv')
     
-    # 1. 컬럼명을 소문자로 통일하고 공백 제거 (오타 방지)
+    # 컬럼명 공백 제거 및 소문자 통일
     df.columns = df.columns.str.strip().str.lower()
     
-    # 2. 필요한 컬럼만 추출 후 숫자로 강제 변환 (문자열이나 빈값 에러 방지)
-    target_cols = ['height', 'chest', 'waist', 'weight', 'obesity']
+    # 비만 단계를 나타내는 컬럼 후보군 (데이터에 따라 'obesity', 'label', 'class', '비만' 등으로 되어있을 수 있음)
+    obesity_col = None
+    for col in ['obesity', 'label', 'class', 'status']:
+        if col in df.columns:
+            obesity_col = col
+            break
+            
+    # 만약 영어 이름이 없다면 컬럼 중 가장 마지막 컬럼을 비만 단계로 자동 지정
+    if obesity_col is None:
+        obesity_col = df.columns[-1]
+
+    # 숫자형 데이터 변환
     for col in ['height', 'chest', 'waist', 'weight']:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce')
             
-    # 결측치(NaN)가 있는 행 제거
     df = df.dropna()
     
-    # 3. 선형 회귀 모델 학습 (키, 가슴, 허리로 몸무게 예측)
+    # 1. 선형 회귀 모델 학습 (키, 가슴, 허리로 몸무게 예측)
     X_lr = df[['height', 'chest', 'waist']]
     y_lr = df['weight']
     lr_model = LinearRegression()
     lr_model.fit(X_lr, y_lr)
     
-    # 4. 랜덤 포레스트 모델 학습 (키, 가슴, 허리, 몸무게로 비만 단계 예측)
+    # 2. 랜덤 포레스트 모델 학습
     X_rf = df[['height', 'chest', 'waist', 'weight']]
-    y_rf = df['obesity']  # 데이터의 비만 단계 컬럼명
+    y_rf = df[obesity_col]
     rf_clf = RandomForestClassifier(n_estimators=100, random_state=42)
     rf_clf.fit(X_rf, y_rf)
     
@@ -63,7 +72,6 @@ with col2:
 
 st.markdown("")
 if st.button("🚀 감량 시나리오 분석 및 투자 설계", use_container_width=True):
-    # 예측 및 시나리오 계산 로직
     input_df = pd.DataFrame([[height, chest, waist]], columns=['height', 'chest', 'waist'])
     predicted_weight = float(lr_model.predict(input_df)[0])
 
