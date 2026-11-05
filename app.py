@@ -6,7 +6,7 @@ from sklearn.ensemble import RandomForestClassifier
 
 # 페이지 설정
 st.set_page_config(
-    page_title="체중 감량 모의 투자 시뮬레이터",
+    page_title="체중 감량 시뮬레이터",
     page_icon="📈",
     layout="centered"
 )
