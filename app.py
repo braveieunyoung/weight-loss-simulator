@@ -70,12 +70,12 @@ st.subheader("현재 신체 치수 입력")
 col1, col2 = st.columns(2)
 
 with col1:
-    h = st.number_input("키 (cm)", min_value=100.0, max_value=250.0, value=170.0, step=0.1)
-    c = st.number_input("가슴둘레 (cm)", min_value=50.0, max_value=150.0, value=90.0, step=0.1)
+    h = st.number_input("키 (cm)", min_value=100.0, max_value=250.0, value=170.0, step=0.5)
+    c = st.number_input("가슴둘레 (cm)", min_value=50.0, max_value=150.0, value=90.0, step=0.5)
 
 with col2:
-    w = st.number_input("허리둘레 (cm)", min_value=50.0, max_value=150.0, value=80.0, step=0.1)
-    w2 = st.number_input("목표 몸무게 (kg)", min_value=30.0, max_value=150.0, value=60.0, step=0.1)
+    w = st.number_input("허리둘레 (cm)", min_value=50.0, max_value=150.0, value=80.0, step=0.5)
+    w2 = st.number_input("목표 몸무게 (kg)", min_value=30.0, max_value=150.0, value=60.0, step=0.5)
 
 st.markdown("")
 
