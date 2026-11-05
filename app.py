@@ -8,12 +8,13 @@ from sklearn.ensemble import RandomForestClassifier
 st.set_page_config(
     page_title="체중 감량 모의 투자 시뮬레이터",
     page_icon="📈",
-    layout="wide"
+    layout="centered"
 )
 
 # 1. 앱이 실행될 때 데이터를 읽고 모델을 학습시키는 함수 (캐싱 적용)
 @st.cache_resource
 def train_and_load_models():
+    # CSV 파일 읽기 ('신체검사.csv' 파일이 깃허브에 함께 있어야 합니다)
     df = pd.read_csv('신체검사.csv')
     
     # 전처리
@@ -61,26 +62,25 @@ lr_model, rf_clf = train_and_load_models()
 
 # 2. 웹 UI 구성
 st.title("체중 감량 프로젝트")
-st.markdown("신체 데이터를 입력하고 감량 시나리오를 한눈에 비교해 보세요.")
+st.markdown("신체 데이터를 입력하고 감량 시나리오를 설계해 보세요!")
 
 st.divider()
 
 st.subheader("현재 신체 치수 입력")
-col1, col2, col3, col4 = st.columns(4)
+col1, col2 = st.columns(2)
 
 with col1:
     h = st.number_input("키 (cm)", min_value=100.0, max_value=250.0, value=170.0, step=0.1)
-with col2:
     c = st.number_input("가슴둘레 (cm)", min_value=50.0, max_value=150.0, value=90.0, step=0.1)
-with col3:
+
+with col2:
     w = st.number_input("허리둘레 (cm)", min_value=50.0, max_value=150.0, value=80.0, step=0.1)
-with col4:
     w2 = st.number_input("목표 몸무게 (kg)", min_value=30.0, max_value=150.0, value=60.0, step=0.1)
 
 st.markdown("")
 
 # 3. 분석 버튼 클릭 시 실행
-if st.button("분석 시작하기", use_container_width=True):
+if st.button("분석", use_container_width=True):
     # 현재 몸무게 예측
     input_df = pd.DataFrame([[h, c, w]], columns=['height', 'chest', 'waist'])
     predicted_weight = lr_model.predict(input_df)[0]
@@ -100,9 +100,9 @@ if st.button("분석 시작하기", use_container_width=True):
     m3.metric("현재 비만 단계", pred_obesity_rf)
 
     if weight_to_lose <= 0:
-        st.success("이미 목표 체중 이하이거나 추가 감량이 필요 없는 상태입니다.")
+        st.success("🎉 축하합니다! 이미 목표 체중 이하이거나 추가 감량이 필요 없는 상태입니다.")
     else:
-        st.info(f"감량 목표: -{weight_to_lose:.1f} kg")
+        st.info(f"🎯 **감량 목표:** -{weight_to_lose:.1f} kg")
 
         # 회귀 계수 추출
         coef_chest = lr_model.coef_[1]
@@ -129,25 +129,19 @@ if st.button("분석 시작하기", use_container_width=True):
         pred_obesity_target_2 = rf_clf.predict(input_target_2)[0]
 
         st.markdown("---")
-        st.subheader("감량 시나리오 추천 비교")
+        st.subheader("감량 시나리오 추천")
 
-        # 화면을 좌우 2개의 컬럼으로 분할하여 시나리오를 동시에 표시
-        scenario_col1, scenario_col2 = st.columns(2)
+        tab1, tab2 = st.tabs(["허리둘레 집중형", "전신 균형 밸런스형"])
 
-        with scenario_col1:
-            with st.container(border=True):
-                st.markdown("### 허리둘레 집중형")
-                st.write(f"- 허리둘레 목표: {w}cm ➔ {target_waist_only:.1f}cm")
-                st.write(f"  (약 {waist_reduction_only:.1f}cm 감량 필요)")
-                st.write(f"- 비만단계 변화: {pred_obesity_rf} ➔ {pred_obesity_target_1}")
-                st.write("추천 운동: 유산소(러닝, 인터벌 유산소) + 복근/코어 운동(플랭크, 크런치, 레그레이즈)")
+        with tab1:
+            st.markdown("**허리둘레 위주 체지방 감량 가이드**")
+            st.write(f"- **허리둘레 목표:** {w}cm ➔ **{target_waist_only:.1f}cm** (약 **{waist_reduction_only:.1f}cm** 감량 필요)")
+            st.write(f"- **비만단계 변화:** {pred_obesity_rf} ➔ **{pred_obesity_target_1}**")
+            st.success("**추천 운동:** 유산소(러닝, 인터벌 유산소) + 복근/코어 운동(플랭크, 크런치, 레그레이즈)")
 
-        with scenario_col2:
-            with st.container(border=True):
-                st.markdown("### 전신 균형 밸런스형")
-                st.write(f"- 허리둘레 목표: {w}cm ➔ {target_waist_balanced:.1f}cm")
-                st.write(f"  (약 {waist_reduction_balanced:.1f}cm 감량 필요)")
-                st.write(f"- 가슴둘레 목표: {c}cm ➔ {target_chest_balanced:.1f}cm")
-                st.write(f"  (약 {chest_reduction_balanced:.1f}cm 감량 필요)")
-                st.write(f"- 비만단계 변화: {pred_obesity_rf} ➔ {pred_obesity_target_2}")
-                st.write("추천 운동: 전신 유산소 + 상체 근력 운동(푸시업, 덤벨 숄더프레스, 렛풀다운)")
+        with tab2:
+            st.markdown("**전신 균형 감량 가이드 (허리 70% + 가슴/상체 30%)**")
+            st.write(f"- **허리둘레 목표:** {w}cm ➔ **{target_waist_balanced:.1f}cm** (약 **{waist_reduction_balanced:.1f}cm** 감량 필요)")
+            st.write(f"- **가슴둘레 목표:** {c}cm ➔ **{target_chest_balanced:.1f}cm** (약 **{chest_reduction_balanced:.1f}cm** 감량 필요)")
+            st.write(f"- **비만단계 변화:** {pred_obesity_rf} ➔ **{pred_obesity_target_2}**")
+            st.success("**추천 운동:** 전신 유산소 + 상체 근력 운동(푸시업, 덤벨 숄더프레스, 렛풀다운)으로 근선명도 유지")
